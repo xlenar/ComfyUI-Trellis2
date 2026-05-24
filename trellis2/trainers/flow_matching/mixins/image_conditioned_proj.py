@@ -479,11 +479,21 @@ class DinoV3ProjFeatureExtractor(nn.Module):
         hidden_states = self.model.embeddings(image, bool_masked_pos=None)
         position_embeddings = self.model.rope_embeddings(image)
 
-        for layer_module in self.model.layer:
-            hidden_states = layer_module(
-                hidden_states,
-                position_embeddings=position_embeddings,
-            )
+        # transformers < 5
+        if hasattr(self.model,'layer'):
+            for layer_module in self.model.layer:
+                hidden_states = layer_module(
+                    hidden_states,
+                    position_embeddings=position_embeddings,
+                )
+        elif hasattr(self.model,'model') and hasattr(self.model.model,'layer'): # transformers >= 5
+            for layer_module in self.model.model.layer:
+                hidden_states = layer_module(
+                    hidden_states,
+                    position_embeddings=position_embeddings,
+                )
+        else:
+            raise Exception("Cannot extract features")
 
         return F.layer_norm(hidden_states, hidden_states.shape[-1:])
     
